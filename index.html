@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Планер Алисы · 2027</title>
+<style>
+:root{color-scheme:light;font:17px/1.5 system-ui,sans-serif;color:#26372b;background:#f3f3ea}
+*{box-sizing:border-box}body{margin:0}main{max-width:660px;margin:auto;padding:28px 16px 56px}
+h1,h2{font-family:Georgia,serif;font-weight:500;line-height:1.12;margin:0 0 12px}h1{font-size:clamp(39px,9vw,66px)}h2{font-size:28px}
+header{padding:16px 4px 22px}p{margin:0 0 14px}section,details{background:#fffefa;border:1px solid #d8ded1;border-radius:18px;margin:0 0 12px;padding:19px}
+section{border-top:5px solid #597353}summary{cursor:pointer;font-weight:700;min-height:28px}details[open] summary{margin-bottom:14px}
+label{display:block;margin:12px 0 5px;font-weight:650}textarea,input,select,button{font:inherit}
+textarea,input:not([type=checkbox]),select{width:100%;padding:10px;border:1px solid #aab6a3;border-radius:9px;background:#f8faf5;color:inherit}
+textarea{resize:vertical;min-height:68px}button{min-height:44px;border-radius:9px;border:1px solid #587252;background:#44633e;color:white;padding:8px 12px;cursor:pointer}
+button+button{margin-left:4px}.note{font-size:.88rem;color:#4c5d4b}.eyebrow{color:#4c6946;font-weight:700;letter-spacing:.09em;font-size:.78rem;text-transform:uppercase}
+fieldset{border:0;padding:0;margin:12px 0}legend{font-weight:700}input[type=checkbox]{width:22px;height:22px;accent-color:#44633e;margin:0 8px 0 0;vertical-align:middle}
+.check{padding:5px 0}.actions{display:flex;gap:8px;flex-wrap:wrap}.actions button{margin:0}:focus-visible{outline:3px solid #799973;outline-offset:2px}
+</style>
+<main>
+<header>
+<p class="eyebrow">Планер 2027 · Алиса</p>
+<h1>Моя неделя</h1>
+<p>Для взрослых девочек, у которых всё впереди. Жизнь любит правки.</p>
+</header>
+<section aria-label="Моя неделя">
+<p>Если ты здесь после Reels, впиши, что снимешь. Остальное можно заполнить позже.</p>
+<label for="week">Неделя с</label><input id="week" type="date">
+<div id="weekly"></div>
+<p id="status" class="note" role="status">Записи остаются в этом браузере. Их можно выгрузить и перенести на другое устройство.</p>
+</section>
+<details><summary>30 дней блога без лица</summary>
+<p>Можно начать в любой день. В первую неделю выбери тему и сделай первый ролик. Во вторую попробуй два простых формата. В третью повтори тот, который удобнее снимать или на который был отклик. В четвёртую подведи итоги.</p>
+<div id="challenge"></div>
+</details>
+<details><summary>План на месяц</summary><label for="month">Месяц</label><input id="month" type="month"><div id="monthly"></div></details>
+<details><summary>Трекер привычек</summary>
+<p>Отметь то, что получилось сегодня. У каждого дня свои отметки.</p>
+<label for="habit-date">День</label><input id="habit-date" type="date">
+<div id="habit-list"></div>
+</details>
+<details><summary>Деньги без паники</summary><div id="money"></div></details>
+<details><summary>Итоги 2026 и цели на 2027</summary><div id="year"></div></details>
+<details><summary>Заполни с ChatGPT</summary>
+<p id="prompt">У меня есть [сколько времени] на блог без лица на этой неделе. Тема [тема], из материалов у меня есть [кадры или записи экрана]. Предложи один короткий ролик и три простых действия, чтобы выпустить его. Если данных мало, задай мне один вопрос.</p>
+<button id="copy" type="button">Скопировать промпт</button>
+</details>
+<details><summary>Перенести записи</summary>
+<p class="note">Сделай копию перед сменой телефона или очисткой браузера. Загрузка копии заменяет текущие записи.</p>
+<div class="actions"><button id="export" type="button">Скачать копию</button><button id="import" type="button">Загрузить копию</button></div>
+<input id="file" type="file" accept="application/json,.json" hidden>
+<p id="backup-status" class="note" role="status"></p>
+</details>
+</main>
+<script>
+const key = "alisa-planner-2027-v1";
+const get = id => document.getElementById(id);
+let data = {};
+try { data = JSON.parse(localStorage.getItem(key) || "{}"); } catch {}
+function save(name, value) {
+  data[name] = value;
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+    get("status").textContent = "Сохранено в этом браузере.";
+  } catch {
+    get("status").textContent = "Браузер не сохранил запись. Скачай копию перед закрытием страницы.";
+  }
+}
+function fields(container, prefix, definitions) {
+  const target = get(container);
+  target.replaceChildren();
+  for (const [name, caption, example] of definitions) {
+    const id = prefix + "." + name;
+    const label = document.createElement("label");
+    label.htmlFor = id;
+    label.textContent = caption;
+    const field = document.createElement("textarea");
+    field.id = id;
+    field.rows = 2;
+    field.placeholder = example || "";
+    field.value = data[id] || "";
+    field.addEventListener("input", () => save(id, field.value));
+    target.append(label, field);
+  }
+}
+const today = new Date();
+const dateText = date => [date.getFullYear(), String(date.getMonth()+1).padStart(2,"0"), String(date.getDate()).padStart(2,"0")].join("-");
+const monday = new Date(today);
+monday.setDate(today.getDate() - (today.getDay() + 6) % 7);
+function dateField(id, fallback, render) {
+  const input = get(id);
+  input.value = data[id] || fallback;
+  input.onchange = () => {
+    if (!input.value) input.value = fallback;
+    save(id, input.value);
+    render(input.value);
+  };
+  render(input.value);
+}
+function render() {
+  dateField("week", dateText(monday), date => fields("weekly", "week." + date, [
+    ["main","Что главное на этой неделе?"],
+    ["reel","Какой ролик я сниму?","Например, покажу, как нарезаю один кадр в телефоне"],
+    ["frame","Что будет в кадре?","Руки, прогулка, запись экрана"],
+    ["slot","Когда сниму или выложу?"],
+    ["self","Что оставлю для себя?"],
+    ["review","Что получилось и что повторю?"],
+  ]));
+  fields("challenge", "challenge", [
+    ["topic","О чём мой блог и для кого?"],
+    ["first","Дни 1–7. Что сняла первым?"],
+    ["second","Дни 8–14. Какие два формата попробовала?"],
+    ["third","Дни 15–21. Что повторила и почему?"],
+    ["fourth","Дни 22–30. Что получилось и что продолжу?"],
+  ]);
+  dateField("month", dateText(today).slice(0,7), date => fields("monthly", "month." + date, [
+    ["main","Главная цель месяца"], ["priorities","Три приоритета"],
+    ["content","Что хочу опубликовать"], ["self","Что поможет сохранить силы"],
+    ["review","Итог месяца"],
+  ]));
+  dateField("habit-date", dateText(today), date => {
+    const list = get("habit-list");
+    const group = document.createElement("fieldset");
+    const legend = document.createElement("legend");
+    legend.textContent = "Привычки";
+    group.append(legend);
+    for (const [name, title] of [["idea","Записала идею"],["blog","Сделала шаг для блога"],["rest","Выделила время себе"]]) {
+      const id = "habit." + date + "." + name;
+      const label = document.createElement("label");
+      label.className = "check";
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.checked = data[id] === true;
+      box.onchange = () => save(id, box.checked);
+      label.append(box, title);
+      group.append(label);
+    }
+    list.replaceChildren(group);
+  });
+  fields("money", "money", [
+    ["buffer","Подушка безопасности. Сколько есть и сколько хочу накопить?"],
+    ["payments","Обязательные платежи"],["income","Источники дохода"],
+    ["habit","Одна денежная привычка на месяц"],
+  ]);
+  fields("year", "year", [
+    ["wins","Что получилось в 2026?"],["energy","Что забирало силы?"],
+    ["learned","Чему я научилась?"],["proud","За что себя похвалю?"],
+    ["money","Деньги. Цель, зачем и первый шаг"],
+    ["blog","Дело или блог. Цель, зачем и первый шаг"],
+    ["ai","ИИ-навыки. Цель, зачем и первый шаг"],
+    ["life","Жизнь и силы. Цель, зачем и первый шаг"],
+  ]);
+}
+render();
+get("copy").onclick = async () => {
+  try {
+    await navigator.clipboard.writeText(get("prompt").textContent);
+    get("copy").textContent = "Скопировано";
+  } catch {
+    const range = document.createRange();
+    range.selectNodeContents(get("prompt"));
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    get("copy").textContent = "Текст выделен";
+  }
+};
+get("export").onclick = () => {
+  const url = URL.createObjectURL(new Blob([JSON.stringify({version:1, data}, null, 2)], {type:"application/json"}));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "alisa-planner-2027.json";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+get("import").onclick = () => get("file").click();
+get("file").onchange = async event => {
+  const file = event.target.files[0];
+  if (!file) return;
+  try {
+    const backup = JSON.parse(await file.text());
+    if (backup.version !== 1 || !backup.data || Array.isArray(backup.data) || typeof backup.data !== "object" ||
+        Object.entries(backup.data).some(([name,value]) => !/^[a-z0-9.-]+$/.test(name) || !["boolean","string"].includes(typeof value))) {
+      throw new Error();
+    }
+    localStorage.setItem(key, JSON.stringify(backup.data));
+    data = backup.data;
+    render();
+    get("backup-status").textContent = "Записи загружены.";
+  } catch {
+    get("backup-status").textContent = "Копию не удалось загрузить. Проверь файл и возможность сохранения в браузере.";
+  } finally {
+    event.target.value = "";
+  }
+};
+</script>
+</html>
