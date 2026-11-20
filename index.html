@@ -2,7 +2,7 @@
 <html lang="ru">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Планер Алисы · 2027</title>
+<title>Планер 2027</title>
 <style>
 :root{color-scheme:light;font:17px/1.5 system-ui,sans-serif;color:#26372b;background:#f3f3ea}
 *{box-sizing:border-box}body{margin:0}main{max-width:660px;margin:auto;padding:28px 16px 56px}
@@ -18,14 +18,15 @@ fieldset{border:0;padding:0;margin:12px 0}legend{font-weight:700}input[type=chec
 </style>
 <main>
 <header>
-<p class="eyebrow">Планер 2027 · Алиса</p>
+<p class="eyebrow">Планер 2027</p>
 <h1>Моя неделя</h1>
 <p>Для взрослых девочек, у которых всё впереди. Жизнь любит правки.</p>
 </header>
 <section aria-label="Моя неделя">
-<p>Если ты здесь после Reels, впиши, что снимешь. Остальное можно заполнить позже.</p>
+<p>Выбери одно главное дело на неделю и запиши первый шаг. Остальное можно заполнить позже.</p>
+<label for="owner-name">Моё имя</label><input id="owner-name" autocomplete="given-name" maxlength="60" placeholder="Как тебя зовут?">
 <label for="week">Неделя с</label><input id="week" type="date">
-<div id="weekly"></div>
+<div id="weekly"></div><details><summary>Для блога</summary><div id="weekly-blog"></div></details>
 <p id="status" class="note" role="status">Записи остаются в этом браузере. Их можно выгрузить и перенести на другое устройство.</p>
 </section>
 <details><summary>30 дней блога без лица</summary>
@@ -50,6 +51,7 @@ fieldset{border:0;padding:0;margin:12px 0}legend{font-weight:700}input[type=chec
 <input id="file" type="file" accept="application/json,.json" hidden>
 <p id="backup-status" class="note" role="status"></p>
 </details>
+<footer class="note">Создано в Алиса Студио</footer>
 </main>
 <script>
 const key = "alisa-planner-2027-v1";
@@ -97,14 +99,23 @@ function dateField(id, fallback, render) {
   render(input.value);
 }
 function render() {
-  dateField("week", dateText(monday), date => fields("weekly", "week." + date, [
-    ["main","Что главное на этой неделе?"],
-    ["reel","Какой ролик я сниму?","Например, покажу, как нарезаю один кадр в телефоне"],
-    ["frame","Что будет в кадре?","Руки, прогулка, запись экрана"],
-    ["slot","Когда сниму или выложу?"],
-    ["self","Что оставлю для себя?"],
-    ["review","Что получилось и что повторю?"],
-  ]));
+  const owner = get("owner-name");
+  owner.value = data["owner-name"] || "";
+  owner.oninput = () => save("owner-name", owner.value);
+  dateField("week", dateText(monday), date => {
+    const prefix = "week." + date;
+    fields("weekly", prefix, [
+      ["main","Что главное на этой неделе?"],
+      ["first-step","Какой первый шаг я сделаю?","Например, записаться на занятие"],
+      ["self","Что оставлю для себя?"],
+      ["review","Что получилось и что повторю?"],
+    ]);
+    fields("weekly-blog", prefix, [
+      ["reel","Какой ролик я сниму?","Например, покажу, как нарезаю один кадр в телефоне"],
+      ["frame","Что будет в кадре?","Руки, прогулка, запись экрана"],
+      ["slot","Когда сниму или выложу?"],
+    ]);
+  });
   fields("challenge", "challenge", [
     ["topic","О чём мой блог и для кого?"],
     ["first","Дни 1–7. Что сняла первым?"],
@@ -114,7 +125,7 @@ function render() {
   ]);
   dateField("month", dateText(today).slice(0,7), date => fields("monthly", "month." + date, [
     ["main","Главная цель месяца"], ["priorities","Три приоритета"],
-    ["content","Что хочу опубликовать"], ["self","Что поможет сохранить силы"],
+    ["content","Что хочу сделать или выпустить"], ["self","Что поможет сохранить силы"],
     ["review","Итог месяца"],
   ]));
   dateField("habit-date", dateText(today), date => {
@@ -123,7 +134,7 @@ function render() {
     const legend = document.createElement("legend");
     legend.textContent = "Привычки";
     group.append(legend);
-    for (const [name, title] of [["idea","Записала идею"],["blog","Сделала шаг для блога"],["rest","Выделила время себе"]]) {
+    for (const [name, title] of [["idea","Записала идею"],["blog","Сделала шаг к своей цели"],["rest","Выделила время себе"]]) {
       const id = "habit." + date + "." + name;
       const label = document.createElement("label");
       label.className = "check";
@@ -193,3 +204,5 @@ get("file").onchange = async event => {
 };
 </script>
 </html>
+
+
